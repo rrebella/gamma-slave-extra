@@ -1,4 +1,4 @@
-☆ Change gamma, brightness, and contrast. (Old programs used to change brightness automatically when you set gamma too high — this program only changes the gamma when adjusting gamma settings.)
+☆ Change gamma, brightness, and contrast. (Old programs used to change brightness automatically when you set gamma too high - this program only changes the gamma when adjusting gamma settings.)
 
 ☆ Save and load profiles. They are stored in a config file, so you can easily import someone else’s config.
 
