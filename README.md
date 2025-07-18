@@ -4,6 +4,8 @@
 
 ☆ Choose which monitor you want to adjust. (Old gamma tools only worked on a single display.)
 
+☆ If you close or minimize it, it will stay in the system tray (hidden icons).
+
 ☆ Calculate recommended settings using interpolation.
 
 ☆ VirusTotal scan: https://www.virustotal.com/gui/file/e04303f9773671a631fc2c72aeb414dcf4dde83ba1a972c4de4bb401871a8b9a/detection (because it might detect trojan from gdi32.dll - thats just a windows thing for changing gamma.)
