@@ -168,17 +168,16 @@ namespace rebellagamma
 
         private void UpdateValueLabels()
         {
-            labelGammaValue.Text = (trackBarGamma.Value / 100.0).ToString("0.00");
-            labelBrightnessValue.Text = trackBarBrightness.Value.ToString();
-            labelContrastValue.Text = trackBarContrast.Value.ToString();
+            numericUpDownGamma.Value = (decimal)(trackBarGamma.Value / 100.0);
+            numericUpDownBrightness.Value = trackBarBrightness.Value;
+            numericUpDownContrast.Value = trackBarContrast.Value;
         }
 
         private void ApplyAllSettings()
         {
             if (comboBoxMonitors.SelectedItem == null) return;
 
-            float gamma = trackBarGamma.Value / 100.0f;
-            if (gamma < 0.1f) gamma = 0.1f;
+            float gamma = Math.Max(trackBarGamma.Value / 100.0f, 0.1f);
 
             int brightness = trackBarBrightness.Value;
             float contrast = trackBarContrast.Value / 100.0f;
@@ -200,15 +199,8 @@ namespace rebellagamma
                 double contrastAdjusted = ((gammaCorrected - 0.5) * contrast) + 0.5;
                 double brightnessAdjusted = contrastAdjusted + (brightness / 255.0);
 
-                double val = brightnessAdjusted;
-                if (val < 0) val = 0;
-                if (val > 1) val = 1;
-
-                int rampVal = (int)(val * 65535);
-                if (rampVal > 65535) rampVal = 65535;
-                if (rampVal < 0) rampVal = 0;
-
-                ramp.Red[i] = ramp.Green[i] = ramp.Blue[i] = (ushort)rampVal;
+                double val = Math.Clamp(brightnessAdjusted, 0.0, 1.0);
+                ramp.Red[i] = ramp.Green[i] = ramp.Blue[i] = (ushort)(val * UInt16.MaxValue);
             }
 
             SetDeviceGammaRamp(hdc, ref ramp);
@@ -243,9 +235,8 @@ namespace rebellagamma
 
         private void buttonReset_Click(object sender, EventArgs e)
         {
-            trackBarGamma.Value = 100;
+            trackBarGamma.Value = trackBarContrast.Value = 100;
             trackBarBrightness.Value = 0;
-            trackBarContrast.Value = 100;
             ApplyAllSettings();
             UpdateValueLabels();
             panelGraph.Invalidate();
@@ -253,24 +244,22 @@ namespace rebellagamma
 
         private void buttonSaveAR1_Click(object sender, EventArgs e)
         {
-            if (TryParseAR(textBoxAR1.Text, out double ar1))
-            {
-                ar1 = ApplyDTIfChecked(ar1, checkBoxDT1);
-                ar1Value = ar1;
-                settingsAR1 = GetCurrentSettings();
-                labelAR1.Text = $"AR1: {ar1:F2} | G: {settingsAR1.Value.gamma:0.00} | B: {settingsAR1.Value.brightness} | C: {settingsAR1.Value.contrast}";
-            }
+            ar1Value = ApplyDTIfChecked((double)numericUpDownAR1.Value, checkBoxDT1);
+            settingsAR1 = GetCurrentSettings();
+            labelAR1.Text = $"AR1: {ar1Value:F2} | " +
+                            $"G: {settingsAR1.Value.gamma:0.00} | " +
+                            $"B: {settingsAR1.Value.brightness} | " +
+                            $"C: {settingsAR1.Value.contrast}";
         }
 
         private void buttonSaveAR2_Click(object sender, EventArgs e)
         {
-            if (TryParseAR(textBoxAR2.Text, out double ar2))
-            {
-                ar2 = ApplyDTIfChecked(ar2, checkBoxDT2);
-                ar2Value = ar2;
-                settingsAR2 = GetCurrentSettings();
-                labelAR2.Text = $"AR2: {ar2:F2} | G: {settingsAR2.Value.gamma:0.00} | B: {settingsAR2.Value.brightness} | C: {settingsAR2.Value.contrast}";
-            }
+            ar2Value = ApplyDTIfChecked((double)numericUpDownAR2.Value, checkBoxDT2);
+            settingsAR2 = GetCurrentSettings();
+            labelAR2.Text = $"AR2: {ar2Value:F2} | " +
+                            $"G: {settingsAR2.Value.gamma:0.00} | " +
+                            $"B: {settingsAR2.Value.brightness} | " +
+                            $"C: {settingsAR2.Value.contrast}";
         }
 
         private void buttonSetAR3_Click(object sender, EventArgs e)
@@ -281,26 +270,22 @@ namespace rebellagamma
                 return;
             }
 
-            if (!TryParseAR(textBoxTargetAR.Text, out double ar3))
-                return;
-
-            ar3 = ApplyDTIfChecked(ar3, checkBoxDT3);
-
             if (Math.Abs(ar2Value - ar1Value) < 1e-6)
             {
                 MessageBox.Show("AR1 and AR2 have the same value; interpolation is not possible.");
                 return;
             }
 
+            double ar3 = ApplyDTIfChecked((double)numericUpDownAR3.Value, checkBoxDT3);
             double factor = (ar3 - ar1Value) / (ar2Value - ar1Value);
 
             double gamma = Lerp(settingsAR1.Value.gamma, settingsAR2.Value.gamma, factor);
             int brightness = (int)Math.Round(Lerp(settingsAR1.Value.brightness, settingsAR2.Value.brightness, factor));
             int contrast = (int)Math.Round(Lerp(settingsAR1.Value.contrast, settingsAR2.Value.contrast, factor));
 
-            gamma = Math.Max(0.08, Math.Min(8.88, gamma));
-            brightness = Math.Max(-888, Math.Min(888, brightness));
-            contrast = Math.Max(8, Math.Min(888, contrast));
+            gamma = Math.Clamp(gamma, 0.08, 8.88);
+            brightness = Math.Clamp(brightness, -888, 888);
+            contrast = Math.Clamp(brightness, 8, 888);
 
             trackBarGamma.Value = (int)(gamma * 100);
             trackBarBrightness.Value = brightness;
@@ -372,6 +357,7 @@ namespace rebellagamma
 
             g.DrawImage(gamma2.Properties.Resources.background, new Rectangle(0, 0, w, h));
 
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             using (Pen borderPen = new Pen(Color.White, 2))
             {
                 g.DrawRectangle(borderPen, 1, 1, w - 2, h - 2);
@@ -379,27 +365,23 @@ namespace rebellagamma
 
             using (Pen pen = new Pen(Color.White, 2))
             {
-                Point[] points = new Point[w];
+                PointF[] points = new PointF[w];
                 for (int x = 0; x < w; x++)
                 {
-                    double normalized = x / (double)(w - 1);
+                    float normalized = x / (w - 1.0f);
 
-                    float gamma = trackBarGamma.Value / 100f;
-                    if (gamma < 0.1f) gamma = 0.1f;
-
-                    int brightness = trackBarBrightness.Value;
+                    float gamma = Math.Max(trackBarGamma.Value / 100f, 0.1f);
+                    float brightness = trackBarBrightness.Value;
                     float contrast = trackBarContrast.Value / 100f;
 
-                    double gammaCorrected = Math.Pow(normalized, 1.0 / gamma);
-                    double contrastAdjusted = ((gammaCorrected - 0.5) * contrast) + 0.5;
-                    double brightnessAdjusted = contrastAdjusted + (brightness / 255.0);
+                    float gammaCorrected = MathF.Pow(normalized, 1.0f / gamma);
+                    float contrastAdjusted = ((gammaCorrected - 0.5f) * contrast) + 0.5f;
+                    float brightnessAdjusted = contrastAdjusted + (brightness / 255.0f);
 
-                    double val = brightnessAdjusted;
-                    if (val < 0) val = 0;
-                    if (val > 1) val = 1;
+                    float val = Math.Clamp(brightnessAdjusted, 0.0f, 1.0f);
 
-                    int y = (int)((1.0 - val) * (h - 1));
-                    points[x] = new Point(x, y);
+                    float y = (1.0f - (float)val) * (h - 1.0f) + 1.0f;
+                    points[x] = new PointF(x, y);
                 }
 
                 g.DrawLines(pen, points);
@@ -525,15 +507,42 @@ namespace rebellagamma
 
         private void trackBar_MouseDown_RemoveFocus(object sender, MouseEventArgs e)
         {
-            TrackBar tb = sender as TrackBar;
-            if (tb == null) return;
+            if (sender == null)
+            {
+                return;
+            }
 
+            TrackBar tb = sender as TrackBar;
             int thumbPos = (int)((tb.Width - 16) * (tb.Value - tb.Minimum) / (double)(tb.Maximum - tb.Minimum)) + 8;
 
             if (e.X < thumbPos - 8 || e.X > thumbPos + 8)
             {
                 this.ActiveControl = null;
             }
+        }
+
+        private void numericUpDownGamma_ValueChanged(object sender, EventArgs e)
+        {
+            trackBarGamma.Value = (int)(numericUpDownGamma.Value * 100);
+            ApplyAllSettings();
+            UpdateValueLabels();
+            panelGraph.Invalidate();
+        }
+
+        private void numericUpDownBrightness_ValueChanged(object sender, EventArgs e)
+        {
+            trackBarBrightness.Value = (int)numericUpDownBrightness.Value;
+            ApplyAllSettings();
+            UpdateValueLabels();
+            panelGraph.Invalidate();
+        }
+
+        private void numericUpDownContrast_ValueChanged(object sender, EventArgs e)
+        {
+            trackBarContrast.Value = (int)numericUpDownContrast.Value;
+            ApplyAllSettings();
+            UpdateValueLabels();
+            panelGraph.Invalidate();
         }
     }
 }
