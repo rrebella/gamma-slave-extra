@@ -43,6 +43,9 @@ namespace rebellagamma
 
         public Form1()
         {
+            System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+            System.Threading.Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
+
             InitializeComponent();
 
             using (MemoryStream ms = new MemoryStream(gamma2.Properties.Resources.ico))
@@ -79,19 +82,6 @@ namespace rebellagamma
             {
                 this.Hide();
                 notifyIcon.ShowBalloonTip(1000, "gamma slave extra", "The application is running in the background.", ToolTipIcon.Info);
-            }
-        }
-
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            if (e.CloseReason == CloseReason.UserClosing)
-            {
-                e.Cancel = true;
-                this.WindowState = FormWindowState.Minimized;
-            }
-            else
-            {
-                base.OnFormClosing(e);
             }
         }
 
@@ -168,9 +158,9 @@ namespace rebellagamma
 
         private void UpdateValueLabels()
         {
-            labelGammaValue.Text = (trackBarGamma.Value / 100.0).ToString("0.00");
-            labelBrightnessValue.Text = trackBarBrightness.Value.ToString();
-            labelContrastValue.Text = trackBarContrast.Value.ToString();
+            numericUpDown1.Value = (decimal)(trackBarGamma.Value / 100.0f);
+            numericUpDown2.Value = (decimal)(trackBarBrightness.Value / 100.0f);
+            numericUpDown3.Value = (decimal)(trackBarContrast.Value / 100.0f);
         }
 
         private void ApplyAllSettings()
@@ -253,24 +243,22 @@ namespace rebellagamma
 
         private void buttonSaveAR1_Click(object sender, EventArgs e)
         {
-            if (TryParseAR(textBoxAR1.Text, out double ar1))
-            {
-                ar1 = ApplyDTIfChecked(ar1, checkBoxDT1);
-                ar1Value = ar1;
-                settingsAR1 = GetCurrentSettings();
-                labelAR1.Text = $"AR1: {ar1:F2} | G: {settingsAR1.Value.gamma:0.00} | B: {settingsAR1.Value.brightness} | C: {settingsAR1.Value.contrast}";
-            }
+            double ar1 = (double)numericUpDownAR1.Value;
+            ar1 = ApplyDTIfChecked(ar1, checkBoxDT1);
+            ar1Value = ar1;
+            settingsAR1 = GetCurrentSettings();
+            labelAR1.Text = $"AR1: {ar1:F2} | G: {settingsAR1.Value.gamma:0.00} | B: {settingsAR1.Value.brightness} | C: {settingsAR1.Value.contrast}";
+            this.ActiveControl = null;
         }
 
         private void buttonSaveAR2_Click(object sender, EventArgs e)
         {
-            if (TryParseAR(textBoxAR2.Text, out double ar2))
-            {
-                ar2 = ApplyDTIfChecked(ar2, checkBoxDT2);
-                ar2Value = ar2;
-                settingsAR2 = GetCurrentSettings();
-                labelAR2.Text = $"AR2: {ar2:F2} | G: {settingsAR2.Value.gamma:0.00} | B: {settingsAR2.Value.brightness} | C: {settingsAR2.Value.contrast}";
-            }
+            double ar2 = (double)numericUpDownAR2.Value;
+            ar2 = ApplyDTIfChecked(ar2, checkBoxDT2);
+            ar2Value = ar2;
+            settingsAR2 = GetCurrentSettings();
+            labelAR2.Text = $"AR2: {ar2:F2} | G: {settingsAR2.Value.gamma:0.00} | B: {settingsAR2.Value.brightness} | C: {settingsAR2.Value.contrast}";
+            this.ActiveControl = null;
         }
 
         private void buttonSetAR3_Click(object sender, EventArgs e)
@@ -281,9 +269,7 @@ namespace rebellagamma
                 return;
             }
 
-            if (!TryParseAR(textBoxTargetAR.Text, out double ar3))
-                return;
-
+            double ar3 = (double)numericUpDownTargetAR.Value;
             ar3 = ApplyDTIfChecked(ar3, checkBoxDT3);
 
             if (Math.Abs(ar2Value - ar1Value) < 1e-6)
@@ -311,6 +297,8 @@ namespace rebellagamma
             panelGraph.Invalidate();
 
             labelAR3.Text = $"AR3: {ar3:F2} | G: {gamma:0.00} | B: {brightness} | C: {contrast}";
+
+            this.ActiveControl = null;
         }
 
         private (double gamma, int brightness, int contrast) GetCurrentSettings()
@@ -327,36 +315,6 @@ namespace rebellagamma
         private double Lerp(double start, double end, double factor)
         {
             return start + (end - start) * factor;
-        }
-
-        private void textBoxAR1_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                buttonSaveAR1.PerformClick();
-                e.Handled = true;
-                e.SuppressKeyPress = true;
-            }
-        }
-
-        private void textBoxAR2_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                buttonSaveAR2.PerformClick();
-                e.Handled = true;
-                e.SuppressKeyPress = true;
-            }
-        }
-
-        private void textBoxTargetAR_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                buttonSetAR3.PerformClick();
-                e.Handled = true;
-                e.SuppressKeyPress = true;
-            }
         }
 
         private double ApplyDTIfChecked(double arValue, CheckBox checkBox)
@@ -415,11 +373,27 @@ namespace rebellagamma
             }
 
             var profile = GetCurrentSettings();
-            string profileLine = $"{textBoxProfileName.Text}|{profile.gamma}|{profile.brightness}|{profile.contrast}";
+            string profileName = textBoxProfileName.Text;
+            string profileLine = $"{profileName}|{profile.gamma}|{profile.brightness}|{profile.contrast}";
 
             try
             {
                 var lines = File.Exists(ConfigFilePath) ? File.ReadAllLines(ConfigFilePath).ToList() : new List<string>();
+                bool profileExists = lines.Any(line => line.Split('|')[0] == profileName);
+
+                if (profileExists)
+                {
+                    var result = MessageBox.Show("This profile name already exists. Do you want to overwrite it?",
+                                                 "Confirm overwrite",
+                                                 MessageBoxButtons.YesNo,
+                                                 MessageBoxIcon.Question);
+
+                    if (result == DialogResult.No)
+                        return;
+
+                    lines = lines.Where(line => line.Split('|')[0] != profileName).ToList();
+                }
+
                 lines.Add(profileLine);
                 File.WriteAllLines(ConfigFilePath, lines);
 
@@ -441,6 +415,16 @@ namespace rebellagamma
                 MessageBox.Show($"Error saving profile: {ex.Message}");
             }
         }
+
+        private void textBoxProfileName_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                buttonSaveProfile.PerformClick();
+                e.SuppressKeyPress = true;
+            }
+        }
+
 
         private async void buttonLoadProfile_Click(object sender, EventArgs e)
         {
@@ -533,6 +517,74 @@ namespace rebellagamma
             if (e.X < thumbPos - 8 || e.X > thumbPos + 8)
             {
                 this.ActiveControl = null;
+            }
+        }
+
+        private void numericUpDown1_ValueChanged(object sender, EventArgs e)
+        {
+            trackBarGamma.Value = (int)((float)numericUpDown1.Value * 100.0f);
+            ApplyAllSettings();
+        }
+
+        private void numericUpDown2_ValueChanged(object sender, EventArgs e)
+        {
+            trackBarBrightness.Value = (int)((float)numericUpDown2.Value * 100.0f);
+            ApplyAllSettings();
+        }
+
+        private void numericUpDown3_ValueChanged(object sender, EventArgs e)
+        {
+            trackBarContrast.Value = (int)((float)numericUpDown3.Value * 100.0f);
+            ApplyAllSettings();
+        }
+
+        private void numericUpDownKeyPress(object sender, KeyPressEventArgs e)
+        {
+            var nud = sender as NumericUpDown;
+            if (nud == null) return;
+
+            if (e.KeyChar == ',' || e.KeyChar == '.')
+            {
+                e.KeyChar = '.';
+                if (nud.Text.Contains("."))
+                {
+                    e.Handled = true;
+                }
+                else
+                {
+                    e.Handled = false;
+                }
+            }
+        }
+
+        private void numericUpDownKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private void numericUpDownAR_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+
+                switch (((NumericUpDown)sender).Name)
+                {
+                    case "numericUpDownAR1":
+                        buttonSaveAR1.PerformClick();
+                        break;
+                    case "numericUpDownAR2":
+                        buttonSaveAR2.PerformClick();
+                        break;
+                    case "numericUpDownTargetAR":
+                        buttonSetAR3.PerformClick();
+                        break;
+                }
             }
         }
     }
