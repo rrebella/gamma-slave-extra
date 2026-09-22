@@ -1264,9 +1264,15 @@ namespace rebellagamma
 
         private void ReorderButtons(FlowLayoutPanel pnl)
         {
+            var textboxes = pnl.Controls.OfType<TextBox>().ToList();
+            for (int i = 0; i < textboxes.Count; i++) {
+                pnl.Controls.SetChildIndex(textboxes[i], i);
+            }
+            
             var ba = pnl.Controls.OfType<Button>().FirstOrDefault(b => b.Text == "+");
             var bs = pnl.Controls.OfType<Button>().FirstOrDefault(b => b.Text == "-");
             var bl = pnl.Controls.OfType<Button>().FirstOrDefault(b => b.Text == "\u26BF" || b.Text == "\u26CB");
+            
             if (ba != null) pnl.Controls.SetChildIndex(ba, pnl.Controls.Count - 1);
             if (bs != null) pnl.Controls.SetChildIndex(bs, pnl.Controls.Count - 1);
             if (bl != null) pnl.Controls.SetChildIndex(bl, pnl.Controls.Count - 1);
@@ -1401,14 +1407,7 @@ namespace rebellagamma
             };
             pnl.Controls.Add(tb);
             
-            // Move buttons to end explicitly to preserve order
-            var btnAdd = pnl.Controls.OfType<Button>().FirstOrDefault(b => b.Text == "+");
-            var btnSub = pnl.Controls.OfType<Button>().FirstOrDefault(b => b.Text == "-");
-            var btnLock = pnl.Controls.OfType<Button>().FirstOrDefault(b => b.Text == "\u26BF" || b.Text == "\u26CB");
-            
-            if (btnAdd != null) pnl.Controls.SetChildIndex(btnAdd, pnl.Controls.Count - 1);
-            if (btnSub != null) pnl.Controls.SetChildIndex(btnSub, pnl.Controls.Count - 1);
-            if (btnLock != null) pnl.Controls.SetChildIndex(btnLock, pnl.Controls.Count - 1);
+            ReorderButtons(pnl);
             if (IsPanelLocked(pnl)) tb.Enabled = false;
         }
 
@@ -1616,6 +1615,9 @@ namespace rebellagamma
                 for (int i = 0; i < 7; i++)
                 {
                     if (_loadRows[i] == null) continue;
+                    var rowPanel = _loadRows[i].CheckBoxActive.Parent;
+                    if (rowPanel != null) rowPanel.Visible = true; // Fix WinForms SetChildIndex bug
+                    
                     SetPanelLocked(_loadRows[i].PanelDown, false); // Unlock temporarily to allow setting binds
                     if (i < activeProfiles.Count) {
                         SetComboProfile(_loadRows[i].ComboProfile, activeProfiles[i]);
