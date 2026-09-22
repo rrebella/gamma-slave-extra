@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -8,7 +8,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>gamma slave extra</AssemblyName>
 	<AssemblyTitle>gamma slave extra</AssemblyTitle>
-	<AssemblyVersion>1.0.0.0</AssemblyVersion>
+	<AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
     <RootNamespace>$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
     <ApplicationIcon>img\ico.ico</ApplicationIcon>
     <Authors>rrebella</Authors>
